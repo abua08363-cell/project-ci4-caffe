@@ -12,9 +12,8 @@ class Dashboard extends BaseController
 {
     public function index()
     {
-        // Pengecekan Hak Akses (RBAC): Pastikan hanya 'admin' yang bisa akses penuh
-        if (session()->get('role') !== 'admin') {
-            return redirect()->to('/admin/orders')->with('error', 'Dashboard hanya tersedia untuk Admin.');
+        if (!in_array(session()->get('role'), ['admin', 'staff'], true)) {
+            return redirect()->to('/login')->with('error', 'Akses ditolak.');
         }
 
         $menuModel     = new MenuModel();

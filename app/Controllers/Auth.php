@@ -58,6 +58,6 @@ class Auth extends BaseController
 
     private function landingPage(?string $role): string
     {
-        return $role === 'admin' ? '/admin/dashboard' : '/admin/orders';
+        return in_array($role, ['admin', 'staff'], true) ? '/admin/dashboard' : '/login';
     }
 }

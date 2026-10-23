@@ -10,11 +10,12 @@
 
     <div class="flex items-center gap-4">
         <div class="hidden text-right sm:block">
+            <?php $userRole = session()->get('role') ?? 'User'; ?>
             <p class="font-semibold text-stone-800">
                 <?= esc(session()->get('username') ?? 'Admin') ?>
             </p>
             <p class="text-xs text-stone-500">
-                <?= esc(ucfirst(session()->get('role') ?? 'User')) ?>
+                <?= esc($userRole === 'staff' ? 'Owner' : ucfirst($userRole)) ?>
             </p>
         </div>
 

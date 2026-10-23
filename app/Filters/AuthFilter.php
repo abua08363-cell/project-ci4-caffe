@@ -25,7 +25,7 @@ class AuthFilter implements FilterInterface
 
             // Jika role user tidak ada di dalam daftar argumen yang diizinkan
             if (!in_array($userRole, $arguments)) {
-                $redirectTo = $userRole === 'staff' ? '/admin/orders' : '/admin/dashboard';
+                $redirectTo = in_array($userRole, ['admin', 'staff'], true) ? '/admin/dashboard' : '/login';
 
                 return redirect()->to($redirectTo)->with('error', 'Akses ditolak. Fitur ini khusus Admin.');
             }

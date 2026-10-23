@@ -19,7 +19,8 @@ class Users extends BaseController
     {
         $data = [
             'title' => 'Kelola Partners / Users - BrewNest Coffee',
-            'users' => $this->userModel->findAll()
+            'users' => $this->userModel->findAll(),
+            'isOwner' => session()->get('role') === 'staff',
         ];
 
         return view('admin/users/index', $data);
@@ -29,7 +30,8 @@ class Users extends BaseController
     public function create()
     {
         $data = [
-            'title' => 'Tambah Partner / User Baru'
+            'title' => 'Tambah Partner / User Baru',
+            'isOwner' => session()->get('role') === 'staff',
         ];
 
         return view('admin/users/create', $data);
@@ -38,12 +40,20 @@ class Users extends BaseController
     // Simpan User Baru
     public function store()
     {
+        $role = (string) $this->request->getPost('role');
+        if (!in_array($role, ['admin', 'staff'], true)) {
+            return redirect()->back()->withInput()->with('error', 'Role pengguna tidak valid.');
+        }
+        if ($role === 'staff' && session()->get('role') !== 'staff') {
+            return redirect()->to('/admin/users')->with('error', 'Hanya Owner yang dapat menambahkan Owner baru.');
+        }
+
         $rules = [
             'username' => 'required|min_length[3]',
             'email'    => 'required|valid_email|is_unique[users.email]',
             'password' => 'required|min_length[6]',
-            'role'     => 'required',
-            'photo'    => 'is_image[photo]|max_size[photo,2048]|mime_in[photo,image/jpg,image/jpeg,image/png]' // Validasi foto (opsional tapi aman)
+            'role'     => 'required|in_list[admin,staff]',
+            'photo'    => 'is_image[photo]|max_size[photo,2048]|mime_in[photo,image/jpg,image/jpeg,image/png]'
         ];
 
         if (!$this->validate($rules)) {
@@ -63,8 +73,8 @@ class Users extends BaseController
             'username' => $this->request->getPost('username'),
             'email'    => $this->request->getPost('email'),
             'password' => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
-            'role'     => $this->request->getPost('role'),
-            'photo'    => $photoName, // Simpan nama file foto ke database
+            'role'     => $role,
+            'photo'    => $photoName,
         ]);
 
         return redirect()->to('/admin/users')->with('success', 'User berhasil ditambahkan!');
@@ -77,10 +87,14 @@ class Users extends BaseController
         if (!$user) {
             return redirect()->to('/admin/users')->with('error', 'User tidak ditemukan.');
         }
+        if ($user['role'] === 'staff' && session()->get('role') !== 'staff') {
+            return redirect()->to('/admin/users')->with('error', 'Hanya Owner yang dapat mengedit akun Owner.');
+        }
 
         $data = [
             'title' => 'Edit Partner / User',
-            'user'  => $user
+            'user'  => $user,
+            'isOwner' => session()->get('role') === 'staff',
         ];
 
         return view('admin/users/edit', $data);
@@ -93,12 +107,23 @@ class Users extends BaseController
         if (!$user) {
             return redirect()->to('/admin/users')->with('error', 'User tidak ditemukan.');
         }
+        if ($user['role'] === 'staff' && session()->get('role') !== 'staff') {
+            return redirect()->to('/admin/users')->with('error', 'Hanya Owner yang dapat mengedit akun Owner.');
+        }
+
+        $role = (string) $this->request->getPost('role');
+        if (!in_array($role, ['admin', 'staff'], true)) {
+            return redirect()->back()->withInput()->with('error', 'Role pengguna tidak valid.');
+        }
+        if ($role === 'staff' && session()->get('role') !== 'staff') {
+            return redirect()->to('/admin/users')->with('error', 'Hanya Owner yang dapat mengubah role menjadi Owner.');
+        }
 
         $dataUpdate = [
             'id'       => $id,
             'username' => $this->request->getPost('username'),
             'email'    => $this->request->getPost('email'),
-            'role'     => $this->request->getPost('role'),
+            'role'     => $role,
         ];
 
         // Jika password diisi, lakukan update password
@@ -133,9 +158,13 @@ class Users extends BaseController
             return redirect()->to('/admin/users')->with('error', 'User tidak ditemukan.');
         }
 
-        // Proteksi: Mencegah admin menghapus akunnya sendiri yang sedang digunakan
-        if (session()->get('user_id') == $id) {
+        // Proteksi 1: Mencegah admin menghapus akunnya sendiri yang sedang digunakan
+        if ((string) session()->get('id') === (string) $id) {
             return redirect()->to('/admin/users')->with('error', 'Anda tidak dapat menghapus akun Anda sendiri!');
+        }
+
+        if ($user['role'] === 'staff' && session()->get('role') !== 'staff') {
+            return redirect()->to('/admin/users')->with('error', 'Hanya Owner yang dapat menghapus akun Owner.');
         }
 
         // Hapus file foto fisik dari folder jika ada
